@@ -17,10 +17,33 @@ public class TicTacToeBoard extends View {
     private char[][] board = new char[3][3];
     private Paint linePaint;
     private Paint textPaint;
+    private Paint winLinePaint;
     private GameListener gameListener;
     private boolean isGameOver = false;
     private Random random = new Random();
     private boolean isSinglePlayerMode = true;
+    private int[] winningLine; // Stores coordinates of winning line
+
+    // ... keep existing constructor and interface ...
+
+    private void initBoard() {
+        linePaint = new Paint();
+        linePaint.setColor(getResources().getColor(R.color.grid_lines));
+        linePaint.setStrokeWidth(8f);
+        linePaint.setAntiAlias(true);
+
+        textPaint = new Paint();
+        textPaint.setAntiAlias(true);
+        textPaint.setTextAlign(Paint.Align.CENTER);
+
+        winLinePaint = new Paint();
+        winLinePaint.setColor(getResources().getColor(R.color.winning_line));
+        winLinePaint.setStrokeWidth(16f);
+        winLinePaint.setAntiAlias(true);
+        winLinePaint.setStrokeCap(Paint.Cap.ROUND);
+
+        resetBoard();
+    }
 
     public interface GameListener {
         void onGameWon(char winner);
@@ -31,26 +54,13 @@ public class TicTacToeBoard extends View {
         super(context, attrs);
         initBoard();
     }
-
-    private void initBoard() {
-        linePaint = new Paint();
-        linePaint.setColor(Color.BLACK);
-        linePaint.setStrokeWidth(4f);
-
-        textPaint = new Paint();
-        textPaint.setColor(Color.BLACK);
-        textPaint.setTextSize(100f);
-        textPaint.setTextAlign(Paint.Align.CENTER);
-
-        resetBoard();
-    }
-
     public void resetBoard() {
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
                 board[i][j] = ' ';
             }
         }
+        winningLine = null;
         isGameOver = false;
         invalidate();
     }
@@ -61,22 +71,38 @@ public class TicTacToeBoard extends View {
         float cellWidth = getWidth() / 3f;
         float cellHeight = getHeight() / 3f;
 
-        // Draw grid lines
+        // Рисуем сетку
         for (int i = 1; i < 3; i++) {
             canvas.drawLine(cellWidth * i, 0, cellWidth * i, getHeight(), linePaint);
             canvas.drawLine(0, cellHeight * i, getWidth(), cellHeight * i, linePaint);
         }
 
-        // Draw X's and O's
+        // Рисуем X и O
+        float symbolSize = Math.min(cellWidth, cellHeight) * 0.2f;
+        textPaint.setTextSize(Math.min(cellWidth, cellHeight) * 0.6f);
+
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
-                if (board[i][j] != ' ') {
-                    canvas.drawText(String.valueOf(board[i][j]),
-                            cellWidth * (i + 0.5f),
-                            cellHeight * (j + 0.7f),
-                            textPaint);
+                float centerX = cellWidth * (i + 0.5f);
+                float centerY = cellHeight * (j + 0.5f);
+
+                if (board[i][j] == 'X') {
+                    textPaint.setColor(getResources().getColor(R.color.x_color));
+                    canvas.drawText("X", centerX, centerY + symbolSize, textPaint);
+                } else if (board[i][j] == 'O') {
+                    textPaint.setColor(getResources().getColor(R.color.o_color));
+                    canvas.drawText("O", centerX, centerY + symbolSize, textPaint);
                 }
             }
+        }
+
+        // Рисуем линию победителя с анимацией
+        if (winningLine != null) {
+            float startX = cellWidth * (winningLine[0] + 0.5f);
+            float startY = cellHeight * (winningLine[1] + 0.5f);
+            float endX = cellWidth * (winningLine[2] + 0.5f);
+            float endY = cellHeight * (winningLine[3] + 0.5f);
+            canvas.drawLine(startX, startY, endX, endY, winLinePaint);
         }
     }
 
@@ -89,16 +115,17 @@ public class TicTacToeBoard extends View {
             int col = (int) (y / (getHeight() / 3));
 
             if (row >= 0 && row < 3 && col >= 0 && col < 3 && board[row][col] == ' ') {
-                board[row][col] = 'X';
+                char currentPlayer = getCurrentPlayer();
+                board[row][col] = currentPlayer;
                 invalidate();
 
-                if (checkWinner('X')) {
+                if (checkWinner(currentPlayer)) {
                     isGameOver = true;
-                    if (gameListener != null) gameListener.onGameWon('X');
+                    if (gameListener != null) gameListener.onGameWon(currentPlayer);
                 } else if (isBoardFull()) {
                     isGameOver = true;
                     if (gameListener != null) gameListener.onGameDraw();
-                } else if (isSinglePlayerMode) {
+                } else if (isSinglePlayerMode && currentPlayer == 'X') {
                     makeComputerMove();
                 }
             }
@@ -106,8 +133,18 @@ public class TicTacToeBoard extends View {
         return true;
     }
 
+    private char getCurrentPlayer() {
+        int xCount = 0, oCount = 0;
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                if (board[i][j] == 'X') xCount++;
+                if (board[i][j] == 'O') oCount++;
+            }
+        }
+        return xCount <= oCount ? 'X' : 'O';
+    }
+
     private void makeComputerMove() {
-        // Простой ИИ: случайный ход
         List<Point> availableMoves = new ArrayList<>();
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
@@ -133,17 +170,33 @@ public class TicTacToeBoard extends View {
     }
 
     private boolean checkWinner(char player) {
-        // Проверка по горизонтали и вертикали
+        // Check rows
         for (int i = 0; i < 3; i++) {
-            if ((board[i][0] == player && board[i][1] == player && board[i][2] == player) ||
-                    (board[0][i] == player && board[1][i] == player && board[2][i] == player)) {
+            if (board[i][0] == player && board[i][1] == player && board[i][2] == player) {
+                winningLine = new int[]{i, 0, i, 2};
                 return true;
             }
         }
 
-        // Проверка по диагоналям
-        return (board[0][0] == player && board[1][1] == player && board[2][2] == player) ||
-                (board[2][0] == player && board[1][1] == player && board[0][2] == player);
+        // Check columns
+        for (int i = 0; i < 3; i++) {
+            if (board[0][i] == player && board[1][i] == player && board[2][i] == player) {
+                winningLine = new int[]{0, i, 2, i};
+                return true;
+            }
+        }
+
+        // Check diagonals
+        if (board[0][0] == player && board[1][1] == player && board[2][2] == player) {
+            winningLine = new int[]{0, 0, 2, 2};
+            return true;
+        }
+        if (board[2][0] == player && board[1][1] == player && board[0][2] == player) {
+            winningLine = new int[]{2, 0, 0, 2};
+            return true;
+        }
+
+        return false;
     }
 
     private boolean isBoardFull() {

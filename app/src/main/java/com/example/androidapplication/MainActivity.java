@@ -55,6 +55,7 @@ public class MainActivity extends AppCompatActivity {
             playerModeSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
                 isSinglePlayerMode = !isChecked;
                 player2NameInput.setVisibility(isChecked ? View.VISIBLE : View.GONE);
+                gameBoard.setSinglePlayerMode(!isChecked); // This line is important
                 resetGame();
             });
 
