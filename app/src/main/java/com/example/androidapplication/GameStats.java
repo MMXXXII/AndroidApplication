@@ -15,6 +15,14 @@ public class GameStats {
         prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
     }
 
+    public void resetStats() {
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putInt(GAMES_PLAYED, 0);
+        editor.putInt(PLAYER_WINS, 0);
+        editor.putInt(DRAWS, 0);
+        editor.apply();
+    }
+
     public void addGame(String winner) {
         SharedPreferences.Editor editor = prefs.edit();
         editor.putInt(GAMES_PLAYED, getGamesPlayed() + 1);

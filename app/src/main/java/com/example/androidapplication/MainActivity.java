@@ -9,6 +9,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.util.Log;
 import androidx.appcompat.app.AppCompatActivity;
+import android.content.Intent;  // Добавьте эту строку
+
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
@@ -33,12 +35,19 @@ public class MainActivity extends AppCompatActivity {
             playerModeSwitch = findViewById(R.id.playerModeSwitch);
             player1NameInput = findViewById(R.id.player1NameInput);
             player2NameInput = findViewById(R.id.player2NameInput);
+            Button statsButton = findViewById(R.id.statsButton); // Найти кнопку статистики
 
             if (gameBoard == null) {
                 throw new IllegalStateException("TicTacToeBoard view not found!");
             }
 
             gameStats = new GameStats(this);
+
+            // Обработчик нажатия кнопки статистики
+            statsButton.setOnClickListener(v -> {
+                Intent intent = new Intent(MainActivity.this, StatsActivity.class);
+                startActivity(intent);
+            });
 
             setupGameListeners();
             resetGame(); // Инициализируем начальное состояние
@@ -47,6 +56,7 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, "Ошибка при запуске: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
+
 
     private void setupGameListeners() {
         try {
@@ -80,6 +90,7 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, "Ошибка при настройке: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
+
 
     private void resetGame() {
         try {
